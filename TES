@@ -1,689 +1,142 @@
- --local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/FakeModz/PanjulHub-Script/refs/heads/main/UI')))()
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/jensonhirst/Orion/main/source')))()
---Roblox Client
---ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- Rayfield UI
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source"))()
+local Window = Rayfield:CreateWindow({
+   Name="Fish It Ultimate",
+   LoadingTitle="Lynx Fish It",
+   LoadingSubtitle="Full Features",
+   ConfigurationSaving={Enabled=true, FolderName="LynxFishIt", FileName="Config"},
+   KeySystem=false
+})
 
-
-
-
-
-
-
-
-local Window = OrionLib:MakeWindow({Name = "Panjul Hub | Fisch", HidePremium = false, SaveConfig = true, ConfigFolder = "PanjulHubZ"})
-
-local GuiService = game:GetService("GuiService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local RepliStorage = game:GetService("ReplicatedStorage")
-	local HttpService = game:GetService("HttpService")
-	local Players = game:GetService("Players")
-	local RunService = game:GetService("RunService")
---	local ReplicatedStorage = game:GetService("ReplicatedStorage")
-	local TweenService = game:GetService("TweenService")
-	local VirtualInputManager = Instance.new("VirtualInputManager") -- fak u
-	local VirtualUser = game:GetService("VirtualUser")
-	local StarterGui = game:GetService("StarterGui")
-	local CoreGui = game:GetService("CoreGui")
---	local GuiService = game:GetService("GuiService")
-	local CollectionService = game:GetService("CollectionService")
-	local UserInputService = game:GetService("UserInputService")
-	local Lighting = game:GetService("Lighting")
-	local CorePackages = game:GetService("CorePackages")
-	local VeryImportantPart = Instance.new("Part") -- fake zone for tricking temperature/oxygen scripts
-
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Utils = {}
---local CurrentTool: Tool? 
-	
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 
-local Fishing = Window:MakeTab({
-	Name = "Fishing",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+-- =========================
+-- SETTINGS TAB
+-- =========================
+local SettingsTab = Window:CreateTab("Settings",4483362458)
+SettingsTab:CreateToggle({Name="Anti Lag / Low Texture",CurrentValue=false,Callback=function(val)
+    getgenv().AntiLag=val
+    if val then
+        for _,v in pairs(game:GetDescendants()) do
+            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Explosion") then v:Destroy()
+            elseif v:IsA("BasePart") then v.Material=Enum.Material.Plastic;v.Reflectance=0 end
+        end
+    end
+end})
+SettingsTab:CreateToggle({Name="Anti AFK",CurrentValue=false,Callback=function(val)
+    getgenv().AntiAFK=val
+    if val then
+        for i,v in pairs(getconnections(LocalPlayer.Idled)) do v:Disable() end
+    end
+end})
+SettingsTab:CreateButton({Name="Rejoin Server",Callback=function()
+    local ts=game:GetService("TeleportService")
+    ts:Teleport(game.PlaceId,LocalPlayer)
+end})
+SettingsTab:CreateButton({Name="Buy Rod",Callback=function() ReplicatedStorage.Remotes.BuyRod:FireServer() end})
+SettingsTab:CreateButton({Name="Buy Bait",Callback=function() ReplicatedStorage.Remotes.BuyBait:FireServer() end})
+SettingsTab:CreateButton({Name="Spawn Boat",Callback=function() ReplicatedStorage.Remotes.SpawnBoat:FireServer() end})
 
-local Items = Window:MakeTab({
-	Name = "Items",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+-- =========================
+-- FISHING TAB
+-- =========================
+local FishingTab = Window:CreateTab("Fishing",4483362458)
+local function autoCast() local rod=LocalPlayer.Backpack:FindFirstChild("Fishing Rod"); if rod then ReplicatedStorage.Remotes.CastRod:FireServer() end end
+local function autoCatch() local rod=LocalPlayer.Backpack:FindFirstChild("Fishing Rod"); if rod then ReplicatedStorage.Remotes.CatchFish:FireServer() end end
 
-local Misc = Window:MakeTab({
-	Name = "Misc",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+FishingTab:CreateToggle({Name="Auto Fish & Catch",CurrentValue=false,Callback=function(val)
+    getgenv().AutoFish=val
+    task.spawn(function() while getgenv().AutoFish do task.wait(0.3); autoCast(); task.wait(1); autoCatch() end end)
+end})
+FishingTab:CreateToggle({Name="Auto Perfect",CurrentValue=false,Callback=function(val)
+    getgenv().AutoPerfect=val
+    task.spawn(function() while getgenv().AutoPerfect do task.wait(0.3); ReplicatedStorage.Remotes.SellPerfect:FireServer() end end)
+end})
+FishingTab:CreateToggle({Name="Auto Amazing",CurrentValue=false,Callback=function(val)
+    getgenv().AutoAmazing=val
+    task.spawn(function() while getgenv().AutoAmazing do task.wait(0.3); ReplicatedStorage.Remotes.SellAmazing:FireServer() end end)
+end})
 
-local Teleport = Window:MakeTab({
-	Name = "Teleport",
-	Icon = "rbxassetid://4483345998",
-	PremiumOnly = false
-})
+-- =========================
+-- AUTO SELL TAB
+-- =========================
+local SellTab = Window:CreateTab("Auto Sell",4483362458)
+SellTab:CreateToggle({Name="Auto Sell All",CurrentValue=false,Callback=function(val)
+    getgenv().AutoSell=val
+    task.spawn(function() while getgenv().AutoSell do task.wait(2); if #LocalPlayer.Backpack:GetChildren()>=5 then ReplicatedStorage.Remotes.SellAllFish:FireServer() end end end)
+end})
+SellTab:CreateSlider({Name="Sell Threshold",Range={0,100},Increment=1,Suffix="%",CurrentValue=50,Callback=function(val) getgenv().SellThreshold=val end})
 
+-- =========================
+-- PLAYER TAB
+-- =========================
+local PlayerTab = Window:CreateTab("Player",4483362458)
+PlayerTab:CreateToggle({Name="Float On Water",CurrentValue=false,Callback=function(val) getgenv().FloatOnWater=val
+    task.spawn(function() while getgenv().FloatOnWater do task.wait(0.5)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.Position=Vector3.new(LocalPlayer.Character.HumanoidRootPart.Position.X,10,LocalPlayer.Character.HumanoidRootPart.Position.Z)
+        end
+    end end)
+end})
+PlayerTab:CreateToggle({Name="Infinite Jump",CurrentValue=false,Callback=function(val) getgenv().InfiniteJump=val end})
+PlayerTab:CreateToggle({Name="Unlimited Jump",CurrentValue=false,Callback=function(val) getgenv().UnlimitedJump=val end})
+UserInputService.JumpRequest:Connect(function() if getgenv().InfiniteJump or getgenv().UnlimitedJump then LocalPlayer.Character.Humanoid:ChangeState("Jumping") end end)
+PlayerTab:CreateSlider({Name="Walk Speed",Range={16,200},Increment=1,CurrentValue=16,Callback=function(val) if LocalPlayer.Character then LocalPlayer.Character.Humanoid.WalkSpeed=val end end})
+PlayerTab:CreateToggle({Name="Trade No Delay",CurrentValue=false,Callback=function(val) getgenv().TradeNoDelay=val; if val then ReplicatedStorage.Remotes.TradeDelay:Destroy() end end})
 
-
-
---Variable
-local AutoCasting = false
-local AutoReeling = false
-local InstantBob = false
-local AutoSelling = false
-
-function NotifyHub(judulx, juduly)
-OrionLib:MakeNotification({
-	Name = judulx,
-	Content = juduly,
-	Image = "rbxassetid://4483345998",
-	Time = 5
-})
+-- Tele Select Player
+local playersList={}
+local teleSelected=nil
+local function refreshPlayers()
+    playersList={}
+    for _,p in pairs(Players:GetPlayers()) do if p~=LocalPlayer then table.insert(playersList,p) end end
 end
-
-
-
-
---Fishing
-Fishing:AddToggle({
-	Name = "Auto Cast",
-	Default = false,
-	Callback = function(Value)
-		AutoCasting = Value -- boolean global
-
-		if AutoCasting then
-			task.spawn(function()
-				while AutoCasting do
-					local player = game.Players.LocalPlayer
-					local character = player.Character
-
-					if character then
-						local tool = character:FindFirstChildOfClass("Tool")
-						if tool and not tool:FindFirstChild("bobber") then
-							local castEvent = tool:FindFirstChild("events") and tool.events:FindFirstChild("cast")
-							if castEvent then
-								local power = math.random(90, 99)
-								castEvent:FireServer(power)
-
-								local root = character:FindFirstChild("HumanoidRootPart")
-								if root then
-									root.Anchored = false
-								end
-							end
-						end
-					end
-
-					task.wait(0.03) -- delay antar cast
-				end
-			end)
-		end
-	end
-})
-
-
-
-local AutoShakeV1 = false
-local AutoShakeConnection1
-
-Fishing:AddToggle({
-	Name = "Auto Shake V1",
-	Default = false,
-	Callback = function(Value)
-		AutoShakeV1 = Value
-
-		if Value then
-			if AutoShakeConnection1 then AutoShakeConnection1:Disconnect() end
-
-			local function MountShakeUI(ShakeUI)
-				local SafeZone = ShakeUI:WaitForChild("safezone", 5)
-				if not SafeZone then
-					warn("Unable to mount shake UI.")
-					return
-				end
-
-				-- Pusatkan tombol shake
-				--local Connect = SafeZone:WaitForChild("connect", 1)
-			--	if Connect then
-			--	Connect.Enabled = false
-		--		end
-			--	SafeZone.Size = UDim2.fromOffset(0, 0)
-			--	SafeZone.Position = UDim2.fromScale(0.5, 0.5)
-			--	SafeZone.AnchorPoint = Vector2.new(0.5, 0.5)
-
-				local function HandleButton(Button)
-					Button.Selectable = true
-					GuiService.SelectedObject = Button
-				end
-
-				local Connection
-				Connection = SafeZone.ChildAdded:Connect(function(Child)
-					if not Child:IsA("ImageButton") then return end
-
-					local Done = false
-
-					task.spawn(function()
-						repeat
-						--RunService.RenderStepped:Wait()
-						--RunService.Heartbeat:Wait()
-							task.wait(0.03)
-							HandleButton(Child)
-						until Done
-					end)
-
-					task.spawn(function()
-						repeat 
-						--RunService.RenderStepped:Wait()
-                        --RunService.Heartbeat:Wait()
-						task.wait(0.03) 
-						until not Child:IsDescendantOf(SafeZone)
-						Done = true
-					end)
-				end)
-
-				task.spawn(function()
-					repeat
-					--RunService.RenderStepped:Wait()
-					--RunService.Heartbeat:Wait()
-					task.wait(0.03) 
-						if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(SafeZone) then
-							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-							VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-						end
-					until not SafeZone:IsDescendantOf(LocalPlayer.PlayerGui) or not AutoShakeV2
-					Connection:Disconnect()
-					GuiService.SelectedObject = nil
-				end)
-			end
-
-			AutoShakeConnection1 = LocalPlayer.PlayerGui.ChildAdded:Connect(function(Child)
-				if Child.Name == "shakeui" and Child:IsA("ScreenGui") then
-					MountShakeUI(Child)
-				end
-			end)
-
-			local existing = LocalPlayer.PlayerGui:FindFirstChild("shakeui")
-			if existing then
-				MountShakeUI(existing)
-			end
-		else
-			if AutoShakeConnection1 then
-				AutoShakeConnection1:Disconnect()
-				AutoShakeConnection1 = nil
-			end
-			GuiService.SelectedObject = nil
-		end
-	end
-})
-
-
-
-
-
-
-
-local AutoShakeV2 = false
-local AutoShakeConnection
-
-Fishing:AddToggle({
-	Name = "Auto Shake V2",
-	Default = false,
-	Callback = function(Value)
-		AutoShakeV2 = Value
-
-		if Value then
-			if AutoShakeConnection then AutoShakeConnection:Disconnect() end
-
-			local function MountShakeUI(ShakeUI)
-				local SafeZone = ShakeUI:WaitForChild("safezone", 5)
-				if not SafeZone then
-					warn("Unable to mount shake UI.")
-					return
-				end
-
-				-- Pusatkan tombol shake
-				local Connect = SafeZone:WaitForChild("connect", 1)
-				if Connect then
-					Connect.Enabled = false
-				end
-				SafeZone.Size = UDim2.fromOffset(0, 0)
-				SafeZone.Position = UDim2.fromScale(0.5, 0.5)
-				SafeZone.AnchorPoint = Vector2.new(0.5, 0.5)
-
-				local function HandleButton(Button)
-					Button.Selectable = true
-					GuiService.SelectedObject = Button
-				end
-
-				local Connection
-				Connection = SafeZone.ChildAdded:Connect(function(Child)
-					if not Child:IsA("ImageButton") then return end
-
-					local Done = false
-
-					task.spawn(function()
-						repeat
-						RunService.RenderStepped:Wait()
-						--	RunService.Heartbeat:Wait()
-							--task.wait(0.03)
-							HandleButton(Child)
-						until Done
-					end)
-
-					task.spawn(function()
-						repeat 
-						RunService.RenderStepped:Wait()
-                        --RunService.Heartbeat:Wait()
-						---task.wait(0.03) 
-						until not Child:IsDescendantOf(SafeZone)
-						Done = true
-					end)
-				end)
-
-				task.spawn(function()
-					repeat
-					RunService.RenderStepped:Wait()
-					--RunService.Heartbeat:Wait()
-					--task.wait(0.03) 
-						if GuiService.SelectedObject and GuiService.SelectedObject:IsDescendantOf(SafeZone) then
-							VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
-							VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
-						end
-					until not SafeZone:IsDescendantOf(LocalPlayer.PlayerGui) or not AutoShakeV2
-					Connection:Disconnect()
-					GuiService.SelectedObject = nil
-				end)
-			end
-
-			AutoShakeConnection = LocalPlayer.PlayerGui.ChildAdded:Connect(function(Child)
-				if Child.Name == "shakeui" and Child:IsA("ScreenGui") then
-					MountShakeUI(Child)
-				end
-			end)
-
-			local existing = LocalPlayer.PlayerGui:FindFirstChild("shakeui")
-			if existing then
-				MountShakeUI(existing)
-			end
-		else
-			if AutoShakeConnection then
-				AutoShakeConnection:Disconnect()
-				AutoShakeConnection = nil
-			end
-			GuiService.SelectedObject = nil
-		end
-	end
-})
-
-
-
-
-local InstantReelRunning = false
-local InstantReelCoroutine
-
-local ReelFinished = game:GetService("ReplicatedStorage"):WaitForChild("events"):WaitForChild("reelfinished")
-local ReelBind = game:GetService("ReplicatedStorage"):WaitForChild("events"):WaitForChild("bindable_reel_finished")
-
-Fishing:AddToggle({
-	Name = "Instant Reel",
-	Default = false,
-	Callback = function(Value)
-		InstantReelRunning = Value
-        local player = Players.LocalPlayer
-		local backpack = player:WaitForChild("Backpack")
-		local equipEvent = RepliStorage.packages.Net:FindFirstChild("RE/Backpack/Equip")
-
-		if Value and not InstantReelCoroutine then
-			InstantReelCoroutine = coroutine.create(function()
-				while InstantReelRunning do
-					--RunService.RenderStepped:Wait()
-                    task.wait(0.1)
-					local ReelUI = LocalPlayer.PlayerGui:FindFirstChild("reel")
-					if not ReelUI then continue end
-                   local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-					if not tool then continue end
-
-					local values = tool:FindFirstChild("values")
-					local Bar = ReelUI:FindFirstChild("bar") 
-					if not Bar then continue end
-                  
-					local ReelScript = Bar:FindFirstChild("reel")
-					if ReelScript and ReelScript.Enabled then
-                    ReelFinished:FireServer(100)
-                    task.wait(0.1)
-                    ReelFinished:FireServer(100)
-                    --Bar:Destroy()
-               
-                    
-					end
-				end
-
-				-- Bersihkan saat loop selesai
-				InstantReelCoroutine = nil
-			end)
-
-			coroutine.resume(InstantReelCoroutine)
-		end
-	end
-})
-
-
-local InstantBobConnection
-
-Fishing:AddToggle({
-	Name = "Instant Bobber",
-	Default = false,
-	Callback = function(Value)
-		if Value then
-			InstantBobConnection = RunService.Heartbeat:Connect(function()
-				local Character = LocalPlayer.Character
-				if not Character then return end
-
-				local Tool = Character:FindFirstChildOfClass("Tool")
-				if Tool then
-					local Bobber = Tool:FindFirstChild("bobber")
-					if Bobber then
-						local Params = RaycastParams.new()
-						Params.FilterType = Enum.RaycastFilterType.Include
-						Params.FilterDescendantsInstances = { workspace.Terrain }
-
-						local RayResult = workspace:Raycast(Bobber.Position, Vector3.new(0, -10, 0), Params)
-						if RayResult and RayResult.Instance:IsA("Terrain") then
-							Bobber:PivotTo(CFrame.new(RayResult.Position))
-						end
-					end
-				end
-			end)
-		elseif InstantBobConnection then
-			InstantBobConnection:Disconnect()
-			InstantBobConnection = nil
-		end
-	end
-})
-
-local AutoEquipRodRunning = false
-
-Fishing:AddToggle({
-	Name = "Auto Equip Rod",
-	Default = false,
-	Callback = function(Value)
-		AutoEquipRodRunning = Value
-
-		if Value then
-			task.spawn(function()
-				local Players = game:GetService("Players")
-				local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-				local player = Players.LocalPlayer
-				local backpack = player:WaitForChild("Backpack")
-				local equipEvent = ReplicatedStorage.packages.Net:FindFirstChild("RE/Backpack/Equip")
-
-				while AutoEquipRodRunning do
-					local character = player.Character
-					local currentTool = character and character:FindFirstChildOfClass("Tool")
-
-					local rodToEquip = nil
-
-					-- Cari tool di backpack yang punya "events" (biasanya itu rod)
-					for _, item in ipairs(backpack:GetChildren()) do
-						if item:IsA("Tool") and item:FindFirstChild("events") then
-							rodToEquip = item
-							break
-						end
-					end
-
-					if not currentTool and rodToEquip and equipEvent then
-						equipEvent:FireServer(rodToEquip)
-					end
-
-					task.wait(1)
-				end
-			end)
-		end
-	end
-})
-
-
-
-
-
-local InstantCatchRunning = false
-local InstantCatchCoroutine
-
-Fishing:AddToggle({
-	Name = "Instant Catch [BETA]",
-	Default = false,
-	Callback = function(Value)
-		InstantCatchRunning = Value
-
-		local player = Players.LocalPlayer
-		local backpack = player:WaitForChild("Backpack")
-		local equipEvent = RepliStorage.packages.Net:FindFirstChild("RE/Backpack/Equip")
-
-		if Value and not InstantCatchCoroutine then
-			InstantCatchCoroutine = coroutine.create(function()
-				local lastRecastTime = 0
-				local reelFired = false -- Hanya trigger sekali
-
-				while InstantCatchRunning do
-					RunService.RenderStepped:Wait()
-
-					local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-					if not tool then continue end
-
-					local values = tool:FindFirstChild("values")
-					if values and values:FindFirstChild("bite") and values:FindFirstChild("casted") then
-						if values.bite.Value == true and values.casted.Value == true and not reelFired then
-							-- Fire once
-							ReelBind:Fire()
-							reelFired = true
-
-							task.wait(0.3)
-							ReelBind:Destroy()
-
-							if tick() - lastRecastTime > 0.8 then
-								local toolName = tool.Name
-								tool.Parent = backpack
-								task.wait(0.15)
-
-								local toolInBackpack
-								for _, item in pairs(backpack:GetChildren()) do
-									if item:IsA("Tool") and item.Name:lower():find("rod") then
-										toolInBackpack = item
-										break
-									end
-								end
-
-								if toolInBackpack then
-									equipEvent:FireServer(toolInBackpack)
-									lastRecastTime = tick()
-								end
-							end
-						end
-					end
-				end
-
-				InstantCatchCoroutine = nil
-			end)
-			coroutine.resume(InstantCatchCoroutine)
-		end
-	end
-})
-
-
-
-
-
-
-local InstantComboRunning = false
-local InstantComboCoroutine
-
-local player = Players.LocalPlayer
-local backpack = player:WaitForChild("Backpack")
-local equipEvent = RepliStorage.packages.Net:FindFirstChild("RE/Backpack/Equip")
-local ReelFinished = game:GetService("ReplicatedStorage"):WaitForChild("events"):WaitForChild("reelfinished")
-
-Fishing:AddToggle({
-	Name = "Instant Combo (Catch + Reel)",
-	Default = false,
-	Callback = function(Value)
-		InstantComboRunning = Value
-
-		if Value and not InstantComboCoroutine then
-			InstantComboCoroutine = coroutine.create(function()
-				local lastToolName = nil
-				local hasReeled = false
-				local justCaught = false
-
-				while InstantComboRunning do
-					RunService.RenderStepped:Wait()
-
-					local tool = player.Character and player.Character:FindFirstChildOfClass("Tool")
-					local toolName = tool and tool.Name
-
-					-- Reel UI detection
-					local ReelUI = player.PlayerGui:FindFirstChild("reel")
-					local Bar = ReelUI and ReelUI:FindFirstChild("bar")
-					local ReelScript = Bar and Bar:FindFirstChild("reel")
-
-					-- 1. Instant Reel
-					if ReelScript and ReelScript.Enabled and not hasReeled then
-						ReelFinished:FireServer(100)
-						task.wait(0.05)
-						ReelFinished:FireServer(100)
-
-						hasReeled = true
-						justCaught = true
-
-						task.delay(1, function()
-							hasReeled = false
-						end)
-					end
-
-					-- 2. Requip after catching
-					if justCaught and tool and toolName and toolName:lower():find("rod") then
-						tool.Parent = backpack
-						task.wait(0.1)
-						local toolInBackpack = backpack:FindFirstChild(toolName)
-						if toolInBackpack then
-							equipEvent:FireServer(toolInBackpack)
-						end
-						justCaught = false
-					end
-
-					-- 3. Instant Catch
-					if tool and tool:FindFirstChild("values") then
-						local values = tool.values
-						local bite = values:FindFirstChild("bite")
-						local casted = values:FindFirstChild("casted")
-
-						if bite and casted and bite.Value and casted.Value then
-							-- Requip to trigger instant catch
-							tool.Parent = backpack
-							task.wait(0.1)
-							local toolInBackpack = backpack:FindFirstChild(toolName)
-							if toolInBackpack then
-								equipEvent:FireServer(toolInBackpack)
-							end
-						end
-					end
-				end
-
-				InstantComboCoroutine = nil
-			end)
-
-			coroutine.resume(InstantComboCoroutine)
-		end
-	end
-})
-
-
-
-
-
-
-
---Items
-local DelayAutoSell = 1
-local SellLoop = false
-
-
-
-Items:AddTextbox({
-	Name = "Auto Sell Delay",
-	Default = "1",
-	TextDisappear = false,
-	Callback = function(Value)
-		local numnum = tonumber(Value)
-		if nummum then
-			DelayAutoSell = numnum
-			print("Delay Set To : " .. DelayAutoSell .. " Seconds")
-		end
-	end
-})
-
-
-Items:AddToggle({
-	Name = "Auto Sell",
-	Default = false,
-	Callback = function(Value)
-        AutoSelling = Value
-        if Value and not SellLoop then
-        NotifyHub(" Auto Sell", "auto sell enable")
-        SellLoop = true
-        task.spawn(function()
-	while SellLoop do
-		task.wait(DelayAutoSell)
-		if AutoSelling then
-			pcall(function()
-			game:GetService("ReplicatedStorage").events:WaitForChild("SellAll"):InvokeServer()
-			end)
-		end
-	   end
-	end) 
-	elseif not Value then
-	SellLoop = false
-	NotifyHub("Auto Sell", "auto sell disable")
-end
-end
-}) 
-
-
----Trade Function---
-local PlayerNames = {}
-local SelectedPlayer
-
-Items:AddDropdown({
-	Name = "Player to Trade",
-	Default = "None",
-	Options = PlayerNames,
-	Callback = function(Value)
-		SelectedPlayer = Value
-		print("Player dipilih: " .. Value)
-	end
-})
-
-
-
-
-
-
-
-
-
-
-
-
-
---Misc
-Misc:AddToggle({
-	Name = "Anti Afk",
-	Default = false,
-	Callback = function(Value)
-		print(Value)
-	end    
-})
-
-
-
-
-
-
-
-OrionLib:Init()
+PlayerTab:CreateButton({Name="Refresh Player List",Callback=function() refreshPlayers() end})
+PlayerTab:CreateDropdown({Name="Select Player To Teleport",Options={},CurrentOption="",Callback=function(val) for _,p in pairs(playersList) do if p.Name==val then teleSelected=p break end end end})
+PlayerTab:CreateButton({Name="Teleport To Selected Player",Callback=function() if teleSelected and teleSelected.Character and LocalPlayer.Character then LocalPlayer.Character.HumanoidRootPart.CFrame=teleSelected.Character.HumanoidRootPart.CFrame end end})
+
+-- =========================
+-- BUY WEATHER TAB
+-- =========================
+local WeatherTab = Window:CreateTab("Weather",4483362458)
+local weatherTypes={"Cloud","Storm","Wind","Radiant","Snow"}
+for _,w in pairs(weatherTypes) do WeatherTab:CreateButton({Name="Spawn "..w,Callback=function() ReplicatedStorage.Remotes.SpawnWeather:FireServer(w) end}) end
+WeatherTab:CreateToggle({Name="Auto Buy Weather",CurrentValue=false,Callback=function(val)
+    getgenv().AutoWeather=val
+    task.spawn(function() while getgenv().AutoWeather do task.wait(1.5); for _,w in pairs(weatherTypes) do ReplicatedStorage.Remotes.BuyWeather:FireServer(w) end end end)
+end})
+
+-- =========================
+-- SHARK HUNT TAB
+-- =========================
+local SharkTab = Window:CreateTab("Shark Hunt",4483362458)
+SharkTab:CreateButton({Name="Spawn Shark Hunt",Callback=function() ReplicatedStorage.Remotes.SpawnSharkHunt:FireServer() end})
+SharkTab:CreateToggle({Name="Auto Shark Hunt",CurrentValue=false,Callback=function(val)
+    getgenv().AutoShark=val
+    task.spawn(function() while getgenv().AutoShark do task.wait(1); ReplicatedStorage.Remotes.StartSharkHunt:FireServer() end end)
+end})
+
+-- =========================
+-- TELEPORT TAB
+-- =========================
+local TeleportTab = Window:CreateTab("Teleport",4483362458)
+local Locations={
+["Coral Reefs"]=Vector3.new(-2945,66,2248),["Kohana"]=Vector3.new(-645,16,606),
+["Weather Machine"]=Vector3.new(-1535,2,1917),["Lost Isle [Sisypuhus]"]=Vector3.new(-3703,-136,-1019),
+["Winter Fest"]=Vector3.new(1616,4,3280),["Esoteric Depths"]=Vector3.new(3214,-1303,1411),
+["Tropical Grove"]=Vector3.new(-2047,6,3662),["Stingray Shores"]=Vector3.new(2,4,2839),
+["Lost Isle [Treasure Room]"]=Vector3.new(-3594,-285,-1635),["Lost Isle [Lost Shore]"]=Vector3.new(-3672,70,-912),
+["Kohana Volcano"]=Vector3.new(-512,24,191),["Crater Island"]=Vector3.new(1019,20,5071)
+}
+for name,pos in pairs(Locations) do TeleportTab:CreateButton({Name="Teleport "..name,Callback=function() if LocalPlayer.Character then LocalPlayer.Character.HumanoidRootPart.CFrame=CFrame.new(pos) end end}) end
+
+-- =========================
+-- EVENT TAB
+-- =========================
+local EventTab = Window:CreateTab("Event",4483362458)
+EventTab:CreateButton({Name="Auto Farm Event",Callback=function() task.spawn(function() while true do task.wait(2); ReplicatedStorage.Remotes.FarmEvent:FireServer() end end) end})
+EventTab:CreateButton({Name="Refresh Event List",Callback=function() ReplicatedStorage.Remotes.RefreshEvents:FireServer() end})
+EventTab:CreateButton({Name="Teleport To Event",Callback=function() ReplicatedStorage.Remotes.TeleportToEvent:FireServer() end})
