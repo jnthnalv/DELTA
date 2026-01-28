@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
-task.wait(15)
+task.wait(20)
 
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
@@ -40,7 +40,7 @@ local function getServer()
             task.wait(6)
         end
 
-    until cursor == "" or #servers > 0 or tries >= 15
+    until cursor == "" or #servers > 0 or tries >= 5
 
     if #servers > 0 then
         return servers[math.random(1, #servers)]
@@ -52,7 +52,7 @@ end
 local serverId = getServer()
 
 if serverId then
-    task.wait(6)
+    task.wait(15)
     TeleportService:TeleportToPlaceInstance(placeId, serverId, player)
 else
     warn("❌ Gagal nemu server lain (coba execute ulang)")
