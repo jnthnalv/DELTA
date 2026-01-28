@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
-task.wait(10)
+task.wait(15)
 
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
@@ -40,7 +40,7 @@ local function getServer()
             task.wait(3)
         end
 
-    until cursor == "" or #servers > 0 or tries >= 10
+    until cursor == "" or #servers > 0 or tries >= 15
 
     if #servers > 0 then
         return servers[math.random(1, #servers)]
