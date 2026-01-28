@@ -37,7 +37,7 @@ local function getServer()
 
             cursor = response.nextPageCursor or ""
         else
-            task.wait(3)
+            task.wait(6)
         end
 
     until cursor == "" or #servers > 0 or tries >= 15
@@ -52,7 +52,7 @@ end
 local serverId = getServer()
 
 if serverId then
-    task.wait(4)
+    task.wait(6)
     TeleportService:TeleportToPlaceInstance(placeId, serverId, player)
 else
     warn("❌ Gagal nemu server lain (coba execute ulang)")
