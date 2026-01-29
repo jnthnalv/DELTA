@@ -38,7 +38,7 @@ frame.BorderSizePixel = 0
 local status = Instance.new("TextLabel", frame)
 status.Size = UDim2.fromScale(1, 0.55)
 status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(0,255,120)
+status.TextColor3 = Color3.fromRGB(255,0,135)
 status.Font = Enum.Font.GothamBold
 status.TextScaled = true
 
