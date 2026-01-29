@@ -99,7 +99,7 @@ end
 
 local target = fetchServer()
 if target then
-    status.Text = "OTEWE ðŸš€"
+    status.Text = "OTEWE 🚀"
     timer.Text = "Server ditemukan"
     task.wait(1)
     TeleportService:TeleportToPlaceInstance(placeId, target, player)
