@@ -52,7 +52,7 @@ timer.TextScaled = true
 -- ========================================
 
 -- ================== COUNTDOWN ==================
-status.Text = "SERVER HOP AKTIF"
+status.Text = "JOJOONTHN STR SERVER AKTIF"
 for i = START_DELAY, 1, -1 do
     timer.Text = "Teleport dalam " .. i .. " detik"
     task.wait(1)
