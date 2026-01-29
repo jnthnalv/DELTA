@@ -1,6 +1,6 @@
 -- ================== CONFIG ==================
-local COOLDOWN = 8          -- cooldown antar execute
-local LOAD_DELAY = 5       -- delay setelah game loaded
+local COOLDOWN = 18          -- cooldown antar execute
+local LOAD_DELAY = 15       -- delay setelah game loaded
 -- ============================================
 
 repeat task.wait() until game:IsLoaded()
