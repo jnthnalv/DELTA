@@ -24,35 +24,59 @@ local currentJobId = game.JobId
 
 math.randomseed(os.clock()*1e6)
 
--- ================== UI ==================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
+-- ================== UI (UPDATED) ==================
+local gui = Instance.new("ScreenGui")
+gui.Name = "JOJOONTHN_STR_UI"
 gui.ResetOnSpawn = false
-gui.Name = "ServerHopUI"
+gui.DisplayOrder = 999999      -- PALING DEPAN
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
 
+-- Main Card
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.32, 0.14)
-frame.Position = UDim2.fromScale(0.34, 0.42)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.Size = UDim2.fromScale(0.36, 0.18)
+frame.Position = UDim2.fromScale(0.32, 0.41)
+frame.BackgroundColor3 = Color3.fromRGB(18,18,22)
 frame.BorderSizePixel = 0
 
+local corner = Instance.new("UICorner", frame)
+corner.CornerRadius = UDim.new(0,16)
+
+local stroke = Instance.new("UIStroke", frame)
+stroke.Color = Color3.fromRGB(80,80,90)
+stroke.Thickness = 1
+stroke.Transparency = 0.2
+
+-- Header
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.fromScale(1, 0.32)
+title.BackgroundTransparency = 1
+title.Text = "JOJOONTHN STR"
+title.TextColor3 = Color3.fromRGB(0,255,170)
+title.Font = Enum.Font.GothamBlack
+title.TextScaled = true
+
+-- Status
 local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.fromScale(1, 0.55)
+status.Position = UDim2.fromScale(0, 0.34)
+status.Size = UDim2.fromScale(1, 0.33)
 status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(0,255,120)
+status.TextColor3 = Color3.fromRGB(230,230,230)
 status.Font = Enum.Font.GothamBold
 status.TextScaled = true
 
+-- Timer
 local timer = Instance.new("TextLabel", frame)
-timer.Size = UDim2.fromScale(1, 0.45)
-timer.Position = UDim2.fromScale(0, 0.55)
+timer.Position = UDim2.fromScale(0, 0.68)
+timer.Size = UDim2.fromScale(1, 0.28)
 timer.BackgroundTransparency = 1
-timer.TextColor3 = Color3.fromRGB(200,200,200)
+timer.TextColor3 = Color3.fromRGB(170,170,170)
 timer.Font = Enum.Font.Gotham
 timer.TextScaled = true
--- ========================================
+-- ================================================
 
 -- ================== COUNTDOWN ==================
-status.Text = "JOJOONTHN STR SERVER AKTIF"
+status.Text = "SERVER HOP AKTIF"
 for i = START_DELAY, 1, -1 do
     timer.Text = "Teleport dalam " .. i .. " detik"
     task.wait(1)
@@ -99,7 +123,7 @@ end
 
 local target = fetchServer()
 if target then
-    status.Text = "TELEPORT..."
+    status.Text = "TELEPORTING"
     timer.Text = "Server ditemukan"
     task.wait(1)
     TeleportService:TeleportToPlaceInstance(placeId, target, player)
