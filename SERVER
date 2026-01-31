@@ -31,7 +31,7 @@ gui.Name = "ServerHopUI"
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.fromScale(0.32, 0.14)
-frame.Position = UDim2.fromScale(0.34, 0.42)
+frame.Position = UDim2.fromScale(0.34, 0.10)
 frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
 frame.BorderSizePixel = 0
 
@@ -99,7 +99,7 @@ end
 
 local target = fetchServer()
 if target then
-    status.Text = "TELEPORT..."
+    status.Text = "OTW 🚀"
     timer.Text = "Server ditemukan"
     task.wait(1)
     TeleportService:TeleportToPlaceInstance(placeId, target, player)
