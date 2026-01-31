@@ -1,148 +1,80 @@
--- ================== KONFIG ==================
-local START_DELAY = 20
-local COOLDOWN = 8
-local MAX_PAGES = 3
-local TELEPORT_RETRY = 5
-local RETRY_DELAY = 2
--- ============================================
-
--- ===== ANTI DOUBLE EXECUTE =====
-_G.__SERVERHOP_LAST_RUN = _G.__SERVERHOP_LAST_RUN or 0
-local now = os.clock()
-if now - _G.__SERVERHOP_LAST_RUN < COOLDOWN then return end
-_G.__SERVERHOP_LAST_RUN = now
-
-repeat task.wait() until game:IsLoaded()
-
+-- ================= SERVICES =================
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
+local plr = Players.LocalPlayer
 
-local player = Players.LocalPlayer
-if not player then return end
+-- ================= CONFIG =================
+local REFRESH_INTERVAL = 1.5
 
-local placeId = game.PlaceId
-local currentJobId = game.JobId
+-- ================= COUNT FUNCTION =================
+local function countCaveCrystal()
+    local total = 0
+    local found = false
 
-math.randomseed(tick())
+    for _, v in ipairs(plr.PlayerGui:GetDescendants()) do
+        if v:IsA("TextLabel")
+        and v.Text == "Cave Crystal"
+        and v.Visible == true then
+            total += 1
+            found = true
+        end
+    end
 
--- ================== UI ==================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
+    return total, found
+end
+
+-- ================= UI =================
+local gui = Instance.new("ScreenGui")
+gui.Name = "CaveCrystalCounter"
 gui.ResetOnSpawn = false
-gui.Name = "ServerHopUI"
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999999999
+gui.Enabled = false -- 🔥 default HIDDEN
+gui.Parent = plr.PlayerGui
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.32, 0.14)
-frame.Position = UDim2.fromScale(0.34, 0.10)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+local frame = Instance.new("Frame")
+frame.Parent = gui
+frame.Size = UDim2.fromOffset(280, 90)
+frame.Position = UDim2.fromScale(0.5, 0.05)
+frame.AnchorPoint = Vector2.new(0.5, 0)
+frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 frame.BorderSizePixel = 0
-frame.BackgroundTransparency = 0.1
+frame.ZIndex = 999
 
-local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.fromScale(1, 0.55)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(255,0,135)
-status.Font = Enum.Font.GothamBold
-status.TextScaled = true
-status.Text = "JOJOONTHN STR"
+local title = Instance.new("TextLabel")
+title.Parent = frame
+title.Size = UDim2.new(1, 0, 0.4, 0)
+title.BackgroundTransparency = 1
+title.Text = "CAVE CRYSTAL"
+title.Font = Enum.Font.SourceSansBold
+title.TextScaled = true
+title.TextColor3 = Color3.new(1,1,1)
+title.ZIndex = 1000
 
-local timer = Instance.new("TextLabel", frame)
-timer.Size = UDim2.fromScale(1, 0.45)
-timer.Position = UDim2.fromScale(0, 0.55)
-timer.BackgroundTransparency = 1
-timer.TextColor3 = Color3.fromRGB(200,200,200)
-timer.Font = Enum.Font.Gotham
-timer.TextScaled = true
--- ========================================
+local result = Instance.new("TextLabel")
+result.Parent = frame
+result.Position = UDim2.new(0, 0, 0.45, 0)
+result.Size = UDim2.new(1, 0, 0.5, 0)
+result.BackgroundTransparency = 1
+result.Text = "TOTAL: 0"
+result.Font = Enum.Font.SourceSansBold
+result.TextScaled = true
+result.TextColor3 = Color3.fromRGB(0, 255, 150)
+result.ZIndex = 1000
 
--- ================== COUNTDOWN ==================
-for i = START_DELAY, 1, -1 do
-    timer.Text = "Teleport dalam " .. i .. " detik"
-    task.wait(1)
-end
-timer.Text = "Mencari server..."
--- ===============================================
+-- ================= AUTO LOOP =================
+task.spawn(function()
+    while true do
+        local total, found = countCaveCrystal()
 
--- ================== FETCH SERVER ==================
-local function fetchServer()
-    local cursor
-    local servers = {}
-
-    for _ = 1, MAX_PAGES do
-        local ok, body = pcall(function()
-            return game:HttpGet(
-                "https://games.roblox.com/v1/games/" .. placeId ..
-                "/servers/Public?limit=100&sortOrder=Asc" ..
-                (cursor and "&cursor=" .. cursor or "")
-            )
-        end)
-
-        if not ok then
-            task.wait(1)
-            continue
-        end
-
-        local data = HttpService:JSONDecode(body)
-        if not data or not data.data then break end
-
-        for _, s in ipairs(data.data) do
-            if s.id ~= currentJobId and s.playing < s.maxPlayers then
-                table.insert(servers, s.id)
-            end
-        end
-
-        if #servers > 0 then
-            return servers[math.random(#servers)]
-        end
-
-        cursor = data.nextPageCursor
-        if not cursor then break end
-        task.wait(1)
-    end
-end
--- ================================================
-
--- ================== TELEPORT SAFE ==================
-local function safeTeleport(serverId)
-    for attempt = 1, TELEPORT_RETRY do
-        status.Text = "OTEWE 🚀"
-        timer.Text = "Teleport attempt " .. attempt
-
-        local success = pcall(function()
-            TeleportService:TeleportToPlaceInstance(placeId, serverId, player)
-        end)
-
-        if success then
-            return true
-        end
-
-        task.wait(RETRY_DELAY)
-    end
-    return false
-end
--- ================================================
-
--- ================== MAIN LOGIC ==================
-local targetServer = fetchServer()
-
-if targetServer then
-    local ok = safeTeleport(targetServer)
-
-    if not ok then
-        status.Text = "RETRY"
-        timer.Text = "Cari server ulang..."
-        task.wait(1)
-
-        local retryServer = fetchServer()
-        if retryServer then
-            safeTeleport(retryServer)
+        if found then
+            gui.Enabled = true
+            result.Text = "TOTAL: " .. total
         else
-            status.Text = "GAGAL"
-            timer.Text = "Server tidak ditemukan"
+            gui.Enabled = false -- 🔥 tas ditutup → UI hilang
         end
+
+        task.wait(REFRESH_INTERVAL)
     end
-else
-    status.Text = "GAGAL"
-    timer.Text = "Server kosong"
-end
--- ================================================
+end)
+
+print("✅ Cave Crystal Counter (UI only when inventory open) Loaded")
