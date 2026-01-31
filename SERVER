@@ -31,14 +31,14 @@ gui.Name = "ServerHopUI"
 
 local frame = Instance.new("Frame", gui)
 frame.Size = UDim2.fromScale(0.32, 0.14)
-frame.Position = UDim2.fromScale(0.34, 0.10)
+frame.Position = UDim2.fromScale(0.34, 0.42)
 frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
 frame.BorderSizePixel = 0
 
 local status = Instance.new("TextLabel", frame)
 status.Size = UDim2.fromScale(1, 0.55)
 status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(255,0,135)
+status.TextColor3 = Color3.fromRGB(0,255,120)
 status.Font = Enum.Font.GothamBold
 status.TextScaled = true
 
@@ -52,7 +52,7 @@ timer.TextScaled = true
 -- ========================================
 
 -- ================== COUNTDOWN ==================
-status.Text = "JOJOONTHN STR"
+status.Text = "JOJOONTHN STR SERVER AKTIF"
 for i = START_DELAY, 1, -1 do
     timer.Text = "Teleport dalam " .. i .. " detik"
     task.wait(1)
@@ -99,7 +99,7 @@ end
 
 local target = fetchServer()
 if target then
-    status.Text = "OTEWE 🚀"
+    status.Text = "TELEPORT..."
     timer.Text = "Server ditemukan"
     task.wait(1)
     TeleportService:TeleportToPlaceInstance(placeId, target, player)
