@@ -1,129 +1,49 @@
--- ================== KONFIG ==================
-local START_DELAY = 15
-local COOLDOWN = 8
-local MAX_PAGES = 2
-
-local FALLBACK_TIME = 25 -- batas waktu total (detik)
-local PRIVATE_SERVER_CODE = "6cda54ffe43b1f49a578041109454182"
--- ============================================
-
--- ===== RESET STATE =====
-_G.__SERVERHOP_LAST_RUN = _G.__SERVERHOP_LAST_RUN or 0
-local now = os.clock()
-if now - _G.__SERVERHOP_LAST_RUN < COOLDOWN then return end
-_G.__SERVERHOP_LAST_RUN = now
-
 repeat task.wait() until game:IsLoaded()
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
-local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
-if not player then return end
-
 local placeId = game.PlaceId
-local currentJobId = game.JobId
+local oldJobId = game.JobId
 
-math.randomseed(os.clock() * 1e6)
+local PRIVATE_CODE = "6cda54ffe43b1f49a578041109454182"
 
--- ================== UI ==================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.ResetOnSpawn = false
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.32, 0.14)
-frame.Position = UDim2.fromScale(0.34, 0.10)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-frame.BorderSizePixel = 0
-
-local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.fromScale(1, 0.55)
-status.BackgroundTransparency = 1
-status.TextColor3 = Color3.fromRGB(255,0,135)
-status.Font = Enum.Font.GothamBold
-status.TextScaled = true
-
-local timer = Instance.new("TextLabel", frame)
-timer.Size = UDim2.fromScale(1, 0.45)
-timer.Position = UDim2.fromScale(0, 0.55)
-timer.BackgroundTransparency = 1
-timer.TextColor3 = Color3.fromRGB(200,200,200)
-timer.Font = Enum.Font.Gotham
-timer.TextScaled = true
--- ========================================
-
--- ================== COUNTDOWN ==================
-status.Text = "JOJOONTHN STR"
-for i = START_DELAY, 1, -1 do
-    timer.Text = "Teleport dalam " .. i .. " detik"
-    task.wait(1)
-end
-timer.Text = "Mencari server..."
--- ===============================================
-
--- ================== FETCH SERVER ==================
-local function fetchServer()
-    local cursor = nil
-    local servers = {}
-
-    for _ = 1, MAX_PAGES do
-        local ok, body = pcall(function()
-            local url =
-                "https://games.roblox.com/v1/games/" .. placeId ..
-                "/servers/Public?limit=100&sortOrder=Asc" ..
-                (cursor and "&cursor=" .. cursor or "")
-            return game:HttpGet(url)
-        end)
-
-        if not ok or not body then break end
-
-        local data = HttpService:JSONDecode(body)
-        if not data or not data.data then break end
-
-        for _, s in ipairs(data.data) do
-            if s.id ~= currentJobId and s.playing < s.maxPlayers then
-                servers[#servers+1] = s.id
-            end
-        end
-
-        if #servers > 0 then
-            return servers[math.random(#servers)]
-        end
-
-        cursor = data.nextPageCursor
-        if not cursor then break end
-        task.wait(1.2)
-    end
-end
--- ================================================
-
--- ================== WATCHDOG + FALLBACK ==================
-local startTime = os.clock()
 local teleported = false
+local lastAttempt = 0
 
-task.spawn(function()
-    while not teleported do
-        if os.clock() - startTime >= FALLBACK_TIME then
-            status.Text = "FALLBACK"
-            timer.Text = "Private server"
-            task.wait(0.5)
-            TeleportService:TeleportToPrivateServer(
-                placeId,
-                PRIVATE_SERVER_CODE,
-                {player}
-            )
-            break
-        end
-        task.wait(0.5)
+-- DETEKSI TELEPORT BENAR-BENAR DIMULAI
+TeleportService.TeleportInitFailed:Connect(function()
+    teleported = false
+end)
+
+TeleportService.OnTeleport:Connect(function(state)
+    if state == Enum.TeleportState.Started then
+        teleported = true
     end
 end)
 
-local target = fetchServer()
-if target then
-    teleported = true
-    status.Text = "OTEWE"
-    timer.Text = "Server publik"
-    task.wait(0.5)
-    TeleportService:TeleportToPlaceInstance(placeId, target, player)
-end
+-- LOOP PAKSA
+task.spawn(function()
+    while true do
+        task.wait(5)
+
+        -- jika JobId berubah, STOP
+        if game.JobId ~= oldJobId then
+            break
+        end
+
+        -- throttle
+        if os.clock() - lastAttempt < 6 then
+            continue
+        end
+        lastAttempt = os.clock()
+
+        -- paksa private server
+        TeleportService:TeleportToPrivateServer(
+            placeId,
+            PRIVATE_CODE,
+            {player}
+        )
+    end
+end)
