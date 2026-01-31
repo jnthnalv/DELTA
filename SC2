@@ -1,0 +1,139 @@
+-- ================== KONFIG ==================
+local START_DELAY = 15        -- delay awal
+local COOLDOWN = 8
+local MAX_PAGES = 2
+
+local STUCK_TIMEOUT = 12      -- detik sebelum fallback
+local PRIVATE_SERVER_CODE = "6cda54ffe43b1f49a578041109454182"
+-- ============================================
+
+-- ================== ANTI DOUBLE EXEC ==================
+_G.__SERVERHOP_LAST_RUN = _G.__SERVERHOP_LAST_RUN or 0
+local now = os.clock()
+if now - _G.__SERVERHOP_LAST_RUN < COOLDOWN then return end
+_G.__SERVERHOP_LAST_RUN = now
+-- ======================================================
+
+repeat task.wait() until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local HttpService = game:GetService("HttpService")
+
+local player = Players.LocalPlayer
+if not player then return end
+
+local placeId = game.PlaceId
+local originalJobId = game.JobId
+
+math.randomseed(os.clock() * 1e6)
+
+-- ================== UI ==================
+local gui = Instance.new("ScreenGui")
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(0.32, 0.14)
+frame.Position = UDim2.fromScale(0.34, 0.10)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BorderSizePixel = 0
+
+local status = Instance.new("TextLabel", frame)
+status.Size = UDim2.fromScale(1, 0.55)
+status.BackgroundTransparency = 1
+status.TextColor3 = Color3.fromRGB(255,0,135)
+status.Font = Enum.Font.GothamBold
+status.TextScaled = true
+
+local timer = Instance.new("TextLabel", frame)
+timer.Size = UDim2.fromScale(1, 0.45)
+timer.Position = UDim2.fromScale(0, 0.55)
+timer.BackgroundTransparency = 1
+timer.TextColor3 = Color3.fromRGB(200,200,200)
+timer.Font = Enum.Font.Gotham
+timer.TextScaled = true
+-- ========================================
+
+-- ================== COUNTDOWN ==================
+status.Text = "JOJOONTHN STR"
+for i = START_DELAY, 1, -1 do
+    timer.Text = "Teleport dalam " .. i .. " detik"
+    task.wait(1)
+end
+timer.Text = "Mencari server..."
+-- ===============================================
+
+-- ================== FETCH SERVER PUBLIK ==================
+local function fetchServer()
+    local cursor = nil
+
+    for _ = 1, MAX_PAGES do
+        local ok, body = pcall(function()
+            return game:HttpGet(
+                "https://games.roblox.com/v1/games/" .. placeId ..
+                "/servers/Public?limit=100&sortOrder=Asc" ..
+                (cursor and "&cursor=" .. cursor or "")
+            )
+        end)
+        if not ok then break end
+
+        local data = HttpService:JSONDecode(body)
+        if not data or not data.data then break end
+
+        for _, s in ipairs(data.data) do
+            if s.id ~= originalJobId and s.playing < s.maxPlayers then
+                return s.id
+            end
+        end
+
+        cursor = data.nextPageCursor
+        if not cursor then break end
+        task.wait(1)
+    end
+end
+-- ========================================================
+
+-- ================== FALLBACK PRIVATE (CLIENT SAFE) ==================
+local function teleportPrivate()
+    local options = Instance.new("TeleportOptions")
+    options.ReservedServerAccessCode = PRIVATE_SERVER_CODE
+    TeleportService:Teleport(placeId, player, options)
+end
+-- ===================================================================
+
+-- ================== WATCHDOG ANTI STUCK ==================
+local teleportIssued = false
+
+task.spawn(function()
+    task.wait(STUCK_TIMEOUT)
+    if teleportIssued and game.JobId == originalJobId then
+        status.Text = "PRIVATE"
+        timer.Text = "Force private"
+        task.wait(0.5)
+        teleportPrivate()
+    end
+end)
+-- =========================================================
+
+-- ================== EXECUTE ==================
+local target = fetchServer()
+if target then
+    teleportIssued = true
+    status.Text = "OTEWE"
+    timer.Text = "Server publik"
+    task.wait(0.5)
+
+    TeleportService:TeleportToPlaceInstance(
+        placeId,
+        target,
+        {player}
+    )
+else
+    teleportIssued = true
+    status.Text = "PRIVATE"
+    timer.Text = "Fallback"
+    task.wait(0.5)
+    teleportPrivate()
+end
+-- ==============================================
