@@ -1,23 +1,17 @@
--- =====================================================
--- 🔧 KONFIG
--- =====================================================
-local START_DELAY = 20
-local COOLDOWN = 8
+-- ================== KONFIG ==================
+local START_DELAY = 20        -- DELAY SEBELUM HOP (DETIK)
+local COOLDOWN = 8            -- ANTI DOUBLE EXECUTE
 local MAX_PAGES = 2
-local REFRESH_INTERVAL = 0.8
+-- ============================================
 
--- =====================================================
--- 🔁 ANTI DOUBLE EXEC
--- =====================================================
+-- ===== RESET STATE SETIAP EXECUTE =====
 _G.__SERVERHOP_LAST_RUN = _G.__SERVERHOP_LAST_RUN or 0
-if os.clock() - _G.__SERVERHOP_LAST_RUN < COOLDOWN then return end
-_G.__SERVERHOP_LAST_RUN = os.clock()
+local now = os.clock()
+if now - _G.__SERVERHOP_LAST_RUN < COOLDOWN then return end
+_G.__SERVERHOP_LAST_RUN = now
 
 repeat task.wait() until game:IsLoaded()
 
--- =====================================================
--- 📦 SERVICES
--- =====================================================
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
@@ -28,139 +22,88 @@ if not player then return end
 local placeId = game.PlaceId
 local currentJobId = game.JobId
 
-math.randomseed(os.clock() * 1e6)
+math.randomseed(os.clock()*1e6)
 
--- =====================================================
--- 🖥️ GUI
--- =====================================================
+-- ================== UI ==================
 local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.Name = "JOJOONTHN_UI"
-gui.IgnoreGuiInset = true
-gui.DisplayOrder = 999999
 gui.ResetOnSpawn = false
+gui.Name = "ServerHopUI"
 
-local main = Instance.new("Frame", gui)
-main.Size = UDim2.fromOffset(320,170)
-main.Position = UDim2.fromScale(0.5,0.18)
-main.AnchorPoint = Vector2.new(0.5,0)
-main.BackgroundColor3 = Color3.fromRGB(20,20,20)
-main.BorderSizePixel = 0
-main.Active = true
-main.Draggable = true
-Instance.new("UICorner", main).CornerRadius = UDim.new(0,14)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(0.32, 0.14)
+frame.Position = UDim2.fromScale(0.34, 0.10)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BorderSizePixel = 0
 
--- =====================================================
--- UI ELEMENTS
--- =====================================================
-local title = Instance.new("TextLabel", main)
-title.Size = UDim2.new(1,0,0,36)
-title.BackgroundTransparency = 1
-title.Text = "JOJOONTHN STR"
-title.Font = Enum.Font.GothamBold
-title.TextScaled = true
-title.TextColor3 = Color3.fromRGB(255,0,135)
+local status = Instance.new("TextLabel", frame)
+status.Size = UDim2.fromScale(1, 0.55)
+status.BackgroundTransparency = 1
+status.TextColor3 = Color3.fromRGB(255,0,135)
+status.Font = Enum.Font.GothamBold
+status.TextScaled = true
 
-local timerLabel = Instance.new("TextLabel", main)
-timerLabel.Position = UDim2.new(0,0,0,36)
-timerLabel.Size = UDim2.new(1,0,0,28)
-timerLabel.BackgroundTransparency = 1
-timerLabel.Font = Enum.Font.Gotham
-timerLabel.TextScaled = true
-timerLabel.TextColor3 = Color3.fromRGB(200,200,200)
+local timer = Instance.new("TextLabel", frame)
+timer.Size = UDim2.fromScale(1, 0.45)
+timer.Position = UDim2.fromScale(0, 0.55)
+timer.BackgroundTransparency = 1
+timer.TextColor3 = Color3.fromRGB(200,200,200)
+timer.Font = Enum.Font.Gotham
+timer.TextScaled = true
+-- ========================================
 
-local barBG = Instance.new("Frame", main)
-barBG.Position = UDim2.new(0.1,0,0,70)
-barBG.Size = UDim2.new(0.8,0,0,10)
-barBG.BackgroundColor3 = Color3.fromRGB(45,45,45)
-barBG.BorderSizePixel = 0
-Instance.new("UICorner", barBG).CornerRadius = UDim.new(1,0)
+-- ================== COUNTDOWN ==================
+status.Text = "JOJOONTHN STR"
+for i = START_DELAY, 1, -1 do
+    timer.Text = "Teleport dalam " .. i .. " detik"
+    task.wait(1)
+end
+timer.Text = "Mencari server..."
+-- ===============================================
 
-local barFill = Instance.new("Frame", barBG)
-barFill.Size = UDim2.new(0,0,1,0)
-barFill.BackgroundColor3 = Color3.fromRGB(255,0,135)
-barFill.BorderSizePixel = 0
-Instance.new("UICorner", barFill).CornerRadius = UDim.new(1,0)
+-- ================== FETCH SERVER ==================
+local function fetchServer()
+    local cursor = nil
+    local servers = {}
 
-local caveTitle = Instance.new("TextLabel", main)
-caveTitle.Position = UDim2.new(0,0,0,95)
-caveTitle.Size = UDim2.new(1,0,0,24)
-caveTitle.BackgroundTransparency = 1
-caveTitle.Text = "CAVE CRYSTAL"
-caveTitle.Font = Enum.Font.GothamBold
-caveTitle.TextScaled = true
-caveTitle.TextColor3 = Color3.new(1,1,1)
-
-local caveCount = Instance.new("TextLabel", main)
-caveCount.Position = UDim2.new(0,0,0,120)
-caveCount.Size = UDim2.new(1,0,0,34)
-caveCount.BackgroundTransparency = 1
-caveCount.Font = Enum.Font.GothamBold
-caveCount.TextScaled = true
-caveCount.TextColor3 = Color3.fromRGB(0,255,150)
-caveCount.Text = "TOTAL: 0"
-
--- =====================================================
--- 💎 CAVE CRYSTAL (JALAN DARI AWAL)
--- =====================================================
-task.spawn(function()
-    while true do
-        local total = 0
-        for _, v in ipairs(player.PlayerGui:GetDescendants()) do
-            if v:IsA("TextLabel") and v.Text == "Cave Crystal" and v.Visible then
-                total += 1
-            end
-        end
-        caveCount.Text = "TOTAL: " .. total
-        task.wait(REFRESH_INTERVAL)
-    end
-end)
-
--- =====================================================
--- ⏳ COUNTDOWN + PROGRESS (NON BLOCKING)
--- =====================================================
-task.spawn(function()
-    for i = START_DELAY, 0, -1 do
-        timerLabel.Text = "Teleport dalam " .. i .. " detik"
-        barFill.Size = UDim2.new((START_DELAY - i)/START_DELAY,0,1,0)
-        task.wait(1)
-    end
-    timerLabel.Text = "Mencari server..."
-    barFill.Size = UDim2.new(1,0,1,0)
-end)
-
--- =====================================================
--- 🌍 FETCH + TELEPORT (PARALLEL)
--- =====================================================
-task.spawn(function()
-    task.wait(START_DELAY)
-
-    local cursor
     for _ = 1, MAX_PAGES do
         local ok, body = pcall(function()
-            return game:HttpGet(
+            local url =
                 "https://games.roblox.com/v1/games/" .. placeId ..
                 "/servers/Public?limit=100&sortOrder=Asc" ..
                 (cursor and "&cursor=" .. cursor or "")
-            )
+            return game:HttpGet(url)
         end)
 
-        if ok and body then
-            local data = HttpService:JSONDecode(body)
-            if data and data.data then
-                for _, s in ipairs(data.data) do
-                    if s.id ~= currentJobId and s.playing < s.maxPlayers then
-                        timerLabel.Text = "OTEWE 🚀"
-                        TeleportService:TeleportToPlaceInstance(placeId, s.id, player)
-                        return
-                    end
-                end
-                cursor = data.nextPageCursor
+        if not ok or not body then break end
+
+        local data = HttpService:JSONDecode(body)
+        if not data or not data.data then break end
+
+        for _, s in ipairs(data.data) do
+            if s.id ~= currentJobId and s.playing < s.maxPlayers then
+                servers[#servers+1] = s.id
             end
         end
-        task.wait(1)
+
+        if #servers > 0 then break end
+        cursor = data.nextPageCursor
+        if not cursor then break end
+        task.wait(1.5)
     end
 
-    timerLabel.Text = "Server tidak ditemukan"
-end)
+    if #servers > 0 then
+        return servers[math.random(#servers)]
+    end
+end
+-- ================================================
 
-print("✅ FINAL FIX: Cave Crystal realtime, no delay")
+local target = fetchServer()
+if target then
+    status.Text = "OTEWE 🚀"
+    timer.Text = "Server ditemukan"
+    task.wait(1)
+    TeleportService:TeleportToPlaceInstance(placeId, target, player)
+else
+    status.Text = "GAGAL"
+    timer.Text = "Server tidak ditemukan"
+end
