@@ -1,5 +1,5 @@
 -- ================== KONFIG ==================
-local START_DELAY = 20        -- DELAY SEBELUM HOP (DETIK)
+local START_DELAY = 15        -- DELAY SEBELUM HOP (DETIK)
 local COOLDOWN = 8            -- ANTI DOUBLE EXECUTE
 local MAX_PAGES = 2
 -- ============================================
